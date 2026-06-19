@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 World Cup Groups - Cheat Card</title>
+    <title>2026 World Cup Groups and Matches</title>
     <style>
         body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; }
-        h1 { text-align: center; color: #00ccff; }
+        h1 { text-align: center; color: #b8c0c8; }
         #groups {
             display: grid;
             grid-template-columns: repeat(auto-fit, 280px);
@@ -18,23 +18,33 @@
             margin: 0 auto;
         }
         .group {
+            display: flex;
             width: 280px;
             background: #1a1a1a;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 8px rgba(0,0,0,0.5);
         }
-        .group-header {
+        .group-label {
+            flex-shrink: 0;
+            width: 32px;
             background: linear-gradient(180deg, #e4e8ec 0%, #b8c0c8 100%);
             color: #1a1a1a;
-            padding: 8px;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: bold;
+            font-size: 1.1em;
+        }
+        .group-body {
+            flex: 1;
+            min-width: 0;
         }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         td { padding: 8px 12px; }
         tr:nth-child(even) { background: #222; }
-        .top { background: #003300 !important; font-weight: bold; }
+        tr.top:nth-child(odd) { background: #124212; }
+        tr.top:nth-child(even) { background: #0a330a; }
         .team-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .team-cell img { width: 24px; height: 16px; object-fit: cover; flex-shrink: 0; border-radius: 2px; }
         .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -71,7 +81,7 @@
         }
         .upcoming-head h2 {
             margin: 0;
-            color: #00ccff;
+            color: #b8c0c8;
             font-size: 1.2em;
         }
         #tz-select {
@@ -289,7 +299,8 @@
                         const flag = team.flag ? `<img src="${team.flag}" alt="">` : '';
                         return `<tr${cls}><td><div class="team-cell">${flag}<span class="team-name">${team.name_en}</span></div></td><td class="pts">${ptsLabel(Number(t.pts))}</td></tr>`;
                     }).join('');
-                    return `<div class="group"><div class="group-header">GROUP ${group.name}</div><table>${rows}</table></div>`;
+                    const label = group.name.replace(/^group\s+/i, '');
+                    return `<div class="group"><div class="group-label">${label}</div><div class="group-body"><table>${rows}</table></div></div>`;
                 }).join('');
         }
 
