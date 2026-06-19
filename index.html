@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 World Cup Groups - Cheat Card</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; }
+        h1 { text-align: center; color: #00ccff; }
+        #groups {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, 280px);
+            gap: 20px;
+            justify-content: center;
+            /* 4 × 280px cards + 3 × 20px gaps */
+            width: min(1180px, 100%);
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        .group {
+            width: 280px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .group-header {
+            background: linear-gradient(180deg, #e4e8ec 0%, #b8c0c8 100%);
+            color: #1a1a1a;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        td { padding: 8px 12px; }
+        tr:nth-child(even) { background: #222; }
+        .top { background: #003300 !important; font-weight: bold; }
+        .team-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .team-cell img { width: 24px; height: 16px; object-fit: cover; flex-shrink: 0; border-radius: 2px; }
+        .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        td.pts { white-space: nowrap; text-align: right; width: 64px; }
+        .error { color: #ff6666; text-align: center; padding: 40px; }
+        .loader { text-align: center; padding: 40px; }
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #333;
+            border-top-color: #00ccff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .upcoming {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .upcoming-box {
+            display: inline-block;
+            /* 5 × 160px cards + 4 × 20px gaps */
+            width: min(880px, 100%);
+            max-width: 100%;
+            text-align: left;
+        }
+        .upcoming-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 0 0px 12px;
+        }
+        .upcoming-head h2 {
+            margin: 0;
+            color: #00ccff;
+            font-size: 1.2em;
+        }
+        #tz-select {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.85em;
+        }
+        #upcoming {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, 160px);
+            gap: 20px;
+            justify-content: center;
+        }
+        .match {
+            width: 160px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+        .match-meta {
+            background: #333;
+            color: #aaa;
+            padding: 6px 10px;
+            font-size: 0.8em;
+            line-height: 1.3;
+        }
+        .match-when { display: flex; justify-content: space-between; gap: 8px; }
+        .match-group { margin-top: 2px; }
+        .match-teams {
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .match-team {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .match-team img { width: 24px; height: 16px; object-fit: cover; flex-shrink: 0; border-radius: 2px; }
+        .match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>2026 FIFA World Cup Groups</h1>
+    <div id="groups"><div class="loader"><span class="spinner"></span></div></div>
+
+    <div class="upcoming">
+        <div class="upcoming-box">
+            <div class="upcoming-head">
+                <h2>Upcoming Matches</h2>
+                <select id="tz-select" aria-label="Timezone"></select>
+            </div>
+            <div id="upcoming"><div class="loader"><span class="spinner"></span></div></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://worldcup26.ir';
+        const SCHEDULE = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+
+        const NAME_ALIASES = {
+            'usa': 'United States',
+            'bosnia & herzegovina': 'Bosnia and Herzegovina'
+        };
+        const TZ_KEY = 'wc_tz';
+        const TIMEZONES = [
+            { id: 'America/New_York', label: 'Eastern (ET)' },
+            { id: 'America/Chicago', label: 'Central (CT)' },
+            { id: 'America/Denver', label: 'Mountain (MT)' },
+            { id: 'America/Los_Angeles', label: 'Pacific (PT)' },
+            { id: 'UTC', label: 'UTC' }
+        ];
+
+        let cachedMatches = null;
+        let cachedTeams = null;
+
+        const CACHE_PREFIX = 'wc_api_';
+        const CACHE_TTL_MS = 5 * 60 * 1000;
+        const FETCH_RETRIES = 2;
+        const FETCH_RETRY_BASE_MS = 1000;
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function readCache(key, allowStale = false) {
+            try {
+                const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+                if (!raw) return null;
+                const entry = JSON.parse(raw);
+                if (!allowStale && Date.now() - entry.ts > CACHE_TTL_MS) return null;
+                return entry.data;
+            } catch {
+                return null;
+            }
+        }
+
+        function writeCache(key, data) {
+            try {
+                sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, ts: Date.now() }));
+            } catch {
+                // ignore quota / private mode
+            }
+        }
+
+        function isRetryableResponse(res) {
+            return res.status === 429 || res.status >= 500;
+        }
+
+        async function fetchWithRetry(url) {
+            let lastError;
+            for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
+                try {
+                    const res = await fetch(url);
+                    if (res.ok) return res;
+                    if (!isRetryableResponse(res) || attempt === FETCH_RETRIES) {
+                        throw new Error('HTTP ' + res.status);
+                    }
+                    lastError = new Error('HTTP ' + res.status);
+                } catch (err) {
+                    lastError = err;
+                    if (attempt === FETCH_RETRIES) throw err;
+                }
+                await sleep(FETCH_RETRY_BASE_MS * (attempt + 1));
+            }
+            throw lastError;
+        }
+
+        async function fetchJson(url, cacheKey) {
+            const cached = cacheKey && readCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const res = await fetchWithRetry(url);
+                const data = await res.json();
+                if (cacheKey) writeCache(cacheKey, data);
+                return data;
+            } catch (err) {
+                const stale = cacheKey && readCache(cacheKey, true);
+                if (stale) return stale;
+                throw err;
+            }
+        }
+
+        function showLoader(id) {
+            document.getElementById(id).innerHTML = '<div class="loader"><span class="spinner"></span></div>';
+        }
+
+        function getTimezone() {
+            return localStorage.getItem(TZ_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+
+        function parseMatchDateTime(date, timeStr) {
+            const m = timeStr.match(/^(\d{1,2}):(\d{2})\s+UTC([+-]?\d+)$/);
+            if (!m) return new Date(date + 'T12:00:00');
+            const [y, mo, d] = date.split('-').map(Number);
+            return new Date(Date.UTC(y, mo - 1, d, parseInt(m[1], 10) - parseInt(m[3], 10), parseInt(m[2], 10)));
+        }
+
+        function formatMatchWhen(dt, tz) {
+            const opts = { timeZone: tz };
+            return {
+                date: new Intl.DateTimeFormat(undefined, { ...opts, weekday: 'short', month: 'short', day: 'numeric' }).format(dt),
+                time: new Intl.DateTimeFormat(undefined, { ...opts, hour: 'numeric', minute: '2-digit' }).format(dt)
+            };
+        }
+
+        function initTimezoneSelect() {
+            const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const current = getTimezone();
+            const select = document.getElementById('tz-select');
+            const zones = [...TIMEZONES];
+            if (!zones.some(z => z.id === browserTz)) {
+                zones.unshift({ id: browserTz, label: 'Local' });
+            }
+            if (!zones.some(z => z.id === current)) {
+                zones.unshift({ id: current, label: current });
+            }
+            select.innerHTML = zones.map(z =>
+                `<option value="${z.id}"${z.id === current ? ' selected' : ''}>${z.label}</option>`
+            ).join('');
+            select.addEventListener('change', () => {
+                localStorage.setItem(TZ_KEY, select.value);
+                if (cachedMatches) renderUpcoming(cachedMatches, cachedTeams);
+            });
+        }
+
+        function ptsLabel(n) {
+            return n + (n === 1 ? ' pt' : ' pts');
+        }
+
+        function sortTeams(teams) {
+            return [...teams].sort((a, b) =>
+                Number(b.pts) - Number(a.pts) ||
+                Number(b.gd) - Number(a.gd) ||
+                Number(b.gf) - Number(a.gf)
+            );
+        }
+
+        function render(groups, teamMap) {
+            const container = document.getElementById('groups');
+            container.innerHTML = groups
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(group => {
+                    const rows = sortTeams(group.teams).map((t, i) => {
+                        const team = teamMap[t.team_id] || { name_en: 'Unknown', flag: '' };
+                        const cls = i < 2 ? ' class="top"' : '';
+                        const flag = team.flag ? `<img src="${team.flag}" alt="">` : '';
+                        return `<tr${cls}><td><div class="team-cell">${flag}<span class="team-name">${team.name_en}</span></div></td><td class="pts">${ptsLabel(Number(t.pts))}</td></tr>`;
+                    }).join('');
+                    return `<div class="group"><div class="group-header">GROUP ${group.name}</div><table>${rows}</table></div>`;
+                }).join('');
+        }
+
+        function getFlag(name, teams) {
+            const key = NAME_ALIASES[name.toLowerCase()] || name;
+            const team = teams.find(t => t.name_en === key || t.name_en.toLowerCase() === name.toLowerCase());
+            return team?.flag || '';
+        }
+
+        function renderUpcoming(matches, teams) {
+            const tz = getTimezone();
+            const upcoming = matches
+                .filter(m => !m.score)
+                .sort((a, b) => parseMatchDateTime(a.date, a.time) - parseMatchDateTime(b.date, b.time));
+
+            const container = document.getElementById('upcoming');
+            if (!upcoming.length) {
+                container.innerHTML = '<p style="text-align:center;color:#888;padding:40px">No upcoming matches</p>';
+                return;
+            }
+
+            container.innerHTML = upcoming.map(m => {
+                const when = formatMatchWhen(parseMatchDateTime(m.date, m.time), tz);
+                const flag1 = getFlag(m.team1, teams);
+                const flag2 = getFlag(m.team2, teams);
+                const img1 = flag1 ? `<img src="${flag1}" alt="">` : '';
+                const img2 = flag2 ? `<img src="${flag2}" alt="">` : '';
+                return `<div class="match">
+                    <div class="match-meta">
+                        <div class="match-when"><span>${when.date}</span><span>${when.time}</span></div>
+                        <div class="match-group">${m.group}</div>
+                    </div>
+                    <div class="match-teams">
+                        <div class="match-team">${img1}<span>${m.team1}</span></div>
+                        <div class="match-team">${img2}<span>${m.team2}</span></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadGroups() {
+            showLoader('groups');
+            try {
+                const [groupsData, teamsData] = await Promise.all([
+                    fetchJson(API + '/get/groups', 'groups'),
+                    fetchJson(API + '/get/teams', 'teams')
+                ]);
+
+                const { groups } = groupsData;
+                const { teams } = teamsData;
+                const teamMap = Object.fromEntries(teams.map(t => [t.id, { name_en: t.name_en, flag: t.flag }]));
+
+                cachedTeams = teams;
+                render(groups, teamMap);
+                if (cachedMatches) renderUpcoming(cachedMatches, cachedTeams);
+            } catch (e) {
+                document.getElementById('groups').innerHTML = '<p class="error">Could not load standings. Check your connection and refresh.</p>';
+            }
+        }
+
+        async function loadSchedule() {
+            showLoader('upcoming');
+            try {
+                const data = await fetchJson(SCHEDULE, 'schedule');
+                const { matches } = data;
+                cachedMatches = matches;
+                renderUpcoming(matches, cachedTeams || []);
+            } catch (e) {
+                document.getElementById('upcoming').innerHTML = '<p class="error">Could not load schedule. Check your connection and refresh.</p>';
+            }
+        }
+
+        initTimezoneSelect();
+        loadGroups();
+        loadSchedule();
+    </script>
+</body>
+</html>
