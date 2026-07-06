@@ -3,16 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 World Cup Groups and Matches</title>
+    <title>2026 FIFA World Cup</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; }
-        h1 { text-align: center; color: #b8c0c8; }
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; margin: 0; }
+        .site-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .site-header h1 {
+            margin: 0;
+            color: #b8c0c8;
+            font-size: 1.4em;
+            text-align: left;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .view-tabs {
+            display: flex;
+            gap: 4px;
+        }
+        .view-tabs button {
+            background: transparent;
+            color: #888;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .view-tabs button:hover { color: #ccc; border-color: #666; }
+        .view-tabs button.active {
+            color: #fff;
+            background: #2a2a2a;
+            border-color: #b8c0c8;
+        }
+        .tz-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tz-wrap::before {
+            content: '◷';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #b8c0c8;
+            font-size: 0.85em;
+            line-height: 1;
+            pointer-events: none;
+            z-index: 1;
+        }
+        #tz-select {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 8px 4px 24px;
+            font-size: 0.85em;
+            width: 112px;
+        }
+        .view { display: none; }
+        .view.active { display: block; }
         #groups {
             display: grid;
             grid-template-columns: repeat(auto-fit, 280px);
             gap: 20px;
             justify-content: center;
-            /* 4 × 280px cards + 3 × 20px gaps */
             width: min(1180px, 100%);
             max-width: 100%;
             margin: 0 auto;
@@ -36,10 +104,7 @@
             font-weight: bold;
             font-size: 1.1em;
         }
-        .group-body {
-            flex: 1;
-            min-width: 0;
-        }
+        .group-body { flex: 1; min-width: 0; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         td { padding: 8px 12px; }
         tr:nth-child(even) { background: #222; }
@@ -61,37 +126,15 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .upcoming {
-            margin-top: 40px;
-            text-align: center;
-        }
+        .upcoming { margin-top: 40px; text-align: center; }
         .upcoming-box {
             display: inline-block;
-            /* 5 × 160px cards + 4 × 20px gaps */
             width: min(880px, 100%);
             max-width: 100%;
             text-align: left;
         }
-        .upcoming-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin: 0 0px 12px;
-        }
-        .upcoming-head h2 {
-            margin: 0;
-            color: #b8c0c8;
-            font-size: 1.2em;
-        }
-        #tz-select {
-            background: #222;
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 0.85em;
-        }
+        .upcoming-head { margin: 0 0 12px; }
+        .upcoming-head h2 { margin: 0; color: #b8c0c8; font-size: 1.2em; }
         #upcoming {
             display: grid;
             grid-template-columns: repeat(auto-fit, 160px);
@@ -115,33 +158,201 @@
         }
         .match-when { display: flex; justify-content: space-between; gap: 8px; }
         .match-group { margin-top: 2px; }
-        .match-teams {
-            padding: 8px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .match-team {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-        }
+        .match-teams { padding: 8px 10px; display: flex; flex-direction: column; gap: 10px; }
+        .match-team { display: flex; align-items: center; gap: 6px; min-width: 0; }
         .match-team img { width: 24px; height: 16px; object-fit: cover; flex-shrink: 0; border-radius: 2px; }
         .match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9em; }
+
+        /* Bracket */
+        .bracket-wrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+        }
+        .bracket-tree {
+            --card-w: 130px;
+            --line-w: 18px;
+            --row-h: 54px;
+            display: grid;
+            grid-template-columns:
+                var(--card-w) var(--line-w) var(--card-w) var(--line-w)
+                var(--card-w) var(--line-w) var(--card-w) 28px
+                155px 28px var(--card-w) var(--line-w)
+                var(--card-w) var(--line-w) var(--card-w) var(--line-w)
+                var(--card-w);
+            grid-template-rows: repeat(16, var(--row-h));
+            width: max-content;
+            min-width: 100%;
+            margin: 0;
+            padding: 16px 12px 24px;
+            box-sizing: border-box;
+        }
+        .bracket-stacked { display: none; }
+        .bracket-slot {
+            position: relative;
+            align-self: center;
+            z-index: 2;
+        }
+        .bracket-axis {
+            grid-column: 9;
+            grid-row: 5 / span 8;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            gap: 16px;
+            text-align: center;
+        }
+        .bracket-trophy {
+            font-size: 2.4em;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        .bracket-axis-block {
+            width: 100%;
+            text-align: center;
+        }
+        .bracket-axis-label {
+            font-size: 0.65em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .bracket-match {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 5px 7px;
+            font-size: 0.72em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            width: 100%;
+            min-height: 44px;
+            box-sizing: border-box;
+        }
+        .bracket-match .bk-team {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+            line-height: 1.35;
+        }
+        .bracket-match .bk-team + .bk-team { margin-top: 3px; }
+        .bracket-match .bk-team img {
+            width: 18px;
+            height: 12px;
+            object-fit: cover;
+            flex-shrink: 0;
+            border-radius: 1px;
+        }
+        .bracket-match .bk-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .bracket-match .bk-pts {
+            flex-shrink: 0;
+            color: #b8c0c8;
+            margin-left: 4px;
+        }
+        .bracket-match .bk-team.winner .bk-name,
+        .bracket-match .bk-team.winner .bk-pts { font-weight: bold; color: #e4e8ec; }
+        .bracket-match .bk-when {
+            margin-top: 4px;
+            color: #aaa;
+            font-size: 0.82em;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+        .bracket-line {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .bracket-line:not(.bracket-line--left):not(.bracket-line--right)::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #555;
+        }
+        .bracket-line--left::after,
+        .bracket-line--right::after {
+            content: '';
+            position: absolute;
+            top: calc(var(--row-h) / 2);
+            bottom: calc(var(--row-h) / 2);
+            width: 100%;
+        }
+        .bracket-line--left::after {
+            right: 0;
+            border-top: 1px solid #555;
+            border-bottom: 1px solid #555;
+            border-right: 1px solid #555;
+            border-radius: 0 4px 4px 0;
+        }
+        .bracket-line--right::after {
+            left: 0;
+            border-top: 1px solid #555;
+            border-bottom: 1px solid #555;
+            border-left: 1px solid #555;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .bracket-round-section { margin-bottom: 28px; }
+        .bracket-round-section h3 {
+            margin: 0 0 12px;
+            color: #b8c0c8;
+            font-size: 1em;
+            font-weight: normal;
+        }
+        .bracket-stacked-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .bracket-stacked .bracket-match { font-size: 0.8em; }
+
+        @media (max-width: 768px) {
+            .bracket-tree { display: none; }
+            .bracket-stacked { display: block; }
+            .site-header h1 { font-size: 1.15em; }
+        }
     </style>
 </head>
 <body>
-    <h1>2026 FIFA World Cup Groups</h1>
-    <div id="groups"><div class="loader"><span class="spinner"></span></div></div>
-
-    <div class="upcoming">
-        <div class="upcoming-box">
-            <div class="upcoming-head">
-                <h2>Upcoming Matches</h2>
+    <header class="site-header">
+        <h1>2026 FIFA World Cup</h1>
+        <div class="header-right">
+            <nav class="view-tabs">
+                <button type="button" data-view="groups" class="active">Groups</button>
+                <button type="button" data-view="knockout">Knockout</button>
+            </nav>
+            <span class="tz-wrap">
                 <select id="tz-select" aria-label="Timezone"></select>
+            </span>
+        </div>
+    </header>
+
+    <div id="view-groups" class="view active">
+        <div id="groups"><div class="loader"><span class="spinner"></span></div></div>
+        <div class="upcoming">
+            <div class="upcoming-box">
+                <div class="upcoming-head">
+                    <h2>Upcoming Matches</h2>
+                </div>
+                <div id="upcoming"><div class="loader"><span class="spinner"></span></div></div>
             </div>
-            <div id="upcoming"><div class="loader"><span class="spinner"></span></div></div>
+        </div>
+    </div>
+
+    <div id="view-knockout" class="view">
+        <div class="bracket-wrap">
+            <div id="bracket-tree" class="bracket-tree"></div>
+            <div id="bracket-stacked" class="bracket-stacked"></div>
         </div>
     </div>
 
@@ -154,6 +365,7 @@
             'bosnia & herzegovina': 'Bosnia and Herzegovina'
         };
         const TZ_KEY = 'wc_tz';
+        const VIEW_KEY = 'wc_view';
         const TIMEZONES = [
             { id: 'America/New_York', label: 'Eastern (ET)' },
             { id: 'America/Chicago', label: 'Central (CT)' },
@@ -162,8 +374,72 @@
             { id: 'UTC', label: 'UTC' }
         ];
 
+        const STADIUM_TZ = {
+            '1': 'America/Mexico_City',
+            '2': 'America/Mexico_City',
+            '3': 'America/Monterrey',
+            '4': 'America/Chicago',
+            '5': 'America/Chicago',
+            '6': 'America/New_York',
+            '7': 'America/New_York',
+            '8': 'America/New_York',
+            '9': 'America/New_York',
+            '10': 'America/New_York',
+            '11': 'America/New_York',
+            '12': 'America/Toronto',
+            '13': 'America/Toronto',
+            '14': 'America/Los_Angeles',
+            '15': 'America/Los_Angeles',
+            '16': 'America/Los_Angeles'
+        };
+
+        const BRACKET_SLOTS = [
+            { id: '74', col: 1, row: 1 }, { id: '77', col: 1, row: 3 },
+            { id: '73', col: 1, row: 5 }, { id: '75', col: 1, row: 7 },
+            { id: '76', col: 1, row: 9 }, { id: '78', col: 1, row: 11 },
+            { id: '79', col: 1, row: 13 }, { id: '80', col: 1, row: 15 },
+            { id: '89', col: 3, row: 2 }, { id: '90', col: 3, row: 6 },
+            { id: '91', col: 3, row: 10 }, { id: '92', col: 3, row: 14 },
+            { id: '97', col: 5, row: 4 }, { id: '98', col: 5, row: 12 },
+            { id: '101', col: 7, row: 8 },
+            { id: '104', axis: 'final' }, { id: '103', axis: 'third' },
+            { id: '102', col: 11, row: 8 },
+            { id: '99', col: 13, row: 4 }, { id: '100', col: 13, row: 12 },
+            { id: '93', col: 15, row: 2 }, { id: '94', col: 15, row: 6 },
+            { id: '95', col: 15, row: 10 }, { id: '96', col: 15, row: 14 },
+            { id: '83', col: 17, row: 1 }, { id: '84', col: 17, row: 3 },
+            { id: '85', col: 17, row: 5 }, { id: '86', col: 17, row: 7 },
+            { id: '87', col: 17, row: 9 }, { id: '88', col: 17, row: 11 },
+            { id: '81', col: 17, row: 13 }, { id: '82', col: 17, row: 15 }
+        ];
+
+        const BRACKET_LINES = [
+            { col: 2, row: 1, span: 3, side: 'left' }, { col: 2, row: 5, span: 3, side: 'left' },
+            { col: 2, row: 9, span: 3, side: 'left' }, { col: 2, row: 13, span: 3, side: 'left' },
+            { col: 4, row: 2, span: 5, side: 'left' }, { col: 4, row: 10, span: 5, side: 'left' },
+            { col: 6, row: 4, span: 9, side: 'left' }, { col: 8, row: 8, span: 1 },
+            { col: 10, row: 8, span: 1 }, { col: 12, row: 4, span: 9, side: 'right' },
+            { col: 14, row: 2, span: 5, side: 'right' }, { col: 14, row: 10, span: 5, side: 'right' },
+            { col: 16, row: 1, span: 3, side: 'right' }, { col: 16, row: 5, span: 3, side: 'right' },
+            { col: 16, row: 9, span: 3, side: 'right' }, { col: 16, row: 13, span: 3, side: 'right' }
+        ];
+
+        const STACKED_ROUNDS = [
+            { title: 'Round of 32', ids: ['73','74','75','76','77','78','79','80','81','82','83','84','85','86','87','88'] },
+            { title: 'Round of 16', ids: ['89','90','91','92','93','94','95','96'] },
+            { title: 'Quarter-finals', ids: ['97','98','99','100'] },
+            { title: 'Semi-finals', ids: ['101','102'] },
+            { title: 'Final', ids: ['104'] },
+            { title: 'Third place', ids: ['103'] }
+        ];
+
         let cachedMatches = null;
         let cachedTeams = null;
+        let cachedKnockoutGames = null;
+        let cachedTeamMap = null;
+        let groupsLoaded = false;
+        let knockoutLoaded = false;
+        let currentView = 'groups';
 
         const CACHE_PREFIX = 'wc_api_';
         const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -234,11 +510,44 @@
         }
 
         function showLoader(id) {
-            document.getElementById(id).innerHTML = '<div class="loader"><span class="spinner"></span></div>';
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '<div class="loader"><span class="spinner"></span></div>';
         }
 
         function getTimezone() {
             return localStorage.getItem(TZ_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+
+        function parseZonedDateTime(dateStr, timeZone) {
+            const [datePart, timePart] = dateStr.split(' ');
+            const [mo, d, y] = datePart.split('/').map(Number);
+            const [h, min] = timePart.split(':').map(Number);
+            let t = Date.UTC(y, mo - 1, d, h, min);
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            for (let i = 0; i < 3; i++) {
+                const parts = Object.fromEntries(
+                    formatter.formatToParts(new Date(t)).map(p => [p.type, p.value])
+                );
+                const displayed = Date.UTC(
+                    +parts.year, +parts.month - 1, +parts.day,
+                    +parts.hour, +parts.minute
+                );
+                t += Date.UTC(y, mo - 1, d, h, min) - displayed;
+            }
+            return new Date(t);
+        }
+
+        function parseLocalDate(str, stadiumId) {
+            const tz = STADIUM_TZ[stadiumId] || 'America/New_York';
+            return parseZonedDateTime(str, tz);
         }
 
         function parseMatchDateTime(date, timeStr) {
@@ -254,6 +563,13 @@
                 date: new Intl.DateTimeFormat(undefined, { ...opts, weekday: 'short', month: 'short', day: 'numeric' }).format(dt),
                 time: new Intl.DateTimeFormat(undefined, { ...opts, hour: 'numeric', minute: '2-digit' }).format(dt)
             };
+        }
+
+        function formatBracketWhen(dt, tz) {
+            const opts = { timeZone: tz };
+            const date = new Intl.DateTimeFormat(undefined, { ...opts, weekday: 'short', month: 'short', day: 'numeric' }).format(dt);
+            const time = new Intl.DateTimeFormat(undefined, { ...opts, hour: 'numeric', minute: '2-digit' }).format(dt);
+            return `${date}  ${time}`;
         }
 
         function initTimezoneSelect() {
@@ -272,8 +588,40 @@
             ).join('');
             select.addEventListener('change', () => {
                 localStorage.setItem(TZ_KEY, select.value);
-                if (cachedMatches) renderUpcoming(cachedMatches, cachedTeams);
+                if (currentView === 'groups') {
+                    if (cachedMatches) renderUpcoming(cachedMatches, cachedTeams);
+                } else if (cachedKnockoutGames) {
+                    renderBracket(cachedKnockoutGames, cachedTeamMap);
+                }
             });
+        }
+
+        function initViewTabs() {
+            const saved = localStorage.getItem(VIEW_KEY) || 'groups';
+            setView(saved, false);
+
+            document.querySelectorAll('.view-tabs button').forEach(btn => {
+                btn.addEventListener('click', () => setView(btn.dataset.view, true));
+            });
+        }
+
+        function setView(view, persist) {
+            currentView = view;
+            if (persist) localStorage.setItem(VIEW_KEY, view);
+
+            document.querySelectorAll('.view-tabs button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            document.querySelectorAll('.view').forEach(el => {
+                el.classList.toggle('active', el.id === 'view-' + view);
+            });
+
+            if (view === 'groups' && !groupsLoaded) {
+                loadGroups();
+                loadSchedule();
+            } else if (view === 'knockout' && !knockoutLoaded) {
+                loadKnockout();
+            }
         }
 
         function ptsLabel(n) {
@@ -341,6 +689,120 @@
             }).join('');
         }
 
+        function displayTeam(game, side, teamMap) {
+            const isHome = side === 'home';
+            const id = isHome ? game.home_team_id : game.away_team_id;
+            const label = isHome ? game.home_team_label : game.away_team_label;
+            const nameEn = isHome ? game.home_team_name_en : game.away_team_name_en;
+            if (id && id !== '0') {
+                const team = teamMap[id];
+                return { name: nameEn || team?.name_en || 'TBD', flag: team?.flag || '' };
+            }
+            return { name: label || nameEn || 'TBD', flag: '' };
+        }
+
+        function getMatchWinner(game) {
+            if (game.finished !== 'TRUE') return null;
+            const home = Number(game.home_score);
+            const away = Number(game.away_score);
+            if (game.home_penalty_score != null && game.away_penalty_score != null &&
+                game.home_penalty_score !== 'null' && game.away_penalty_score !== 'null') {
+                const hp = Number(game.home_penalty_score);
+                const ap = Number(game.away_penalty_score);
+                if (hp > ap) return 'home';
+                if (ap > hp) return 'away';
+            }
+            if (home > away) return 'home';
+            if (away > home) return 'away';
+            return null;
+        }
+
+        function isWinner(game, side) {
+            return getMatchWinner(game) === side;
+        }
+
+        function formatTeamScore(game, side) {
+            if (game.finished !== 'TRUE') return '';
+            const score = side === 'home' ? game.home_score : game.away_score;
+            const pen = side === 'home' ? game.home_penalty_score : game.away_penalty_score;
+            if (pen != null && pen !== '' && pen !== 'null') {
+                return `${score} (${pen})`;
+            }
+            return String(score);
+        }
+
+        function shouldShowMatchTime(dt) {
+            return Date.now() - dt.getTime() <= 24 * 60 * 60 * 1000;
+        }
+
+        function renderBracketMatchCard(game, teamMap) {
+            const tz = getTimezone();
+            const home = displayTeam(game, 'home', teamMap);
+            const away = displayTeam(game, 'away', teamMap);
+            const dt = parseLocalDate(game.local_date, game.stadium_id);
+            const when = shouldShowMatchTime(dt) ? formatBracketWhen(dt, tz) : '';
+            const homeWin = isWinner(game, 'home');
+            const awayWin = isWinner(game, 'away');
+            const homeFlag = home.flag ? `<img src="${home.flag}" alt="">` : '';
+            const awayFlag = away.flag ? `<img src="${away.flag}" alt="">` : '';
+            const homeScore = formatTeamScore(game, 'home');
+            const awayScore = formatTeamScore(game, 'away');
+            const homePts = homeScore ? `<span class="bk-pts">${homeScore}</span>` : '';
+            const awayPts = awayScore ? `<span class="bk-pts">${awayScore}</span>` : '';
+            return `<div class="bk-team${homeWin ? ' winner' : ''}">${homeFlag}<span class="bk-name">${home.name}</span>${homePts}</div>
+                <div class="bk-team${awayWin ? ' winner' : ''}">${awayFlag}<span class="bk-name">${away.name}</span>${awayPts}</div>
+                ${when ? `<div class="bk-when">${when}</div>` : ''}`;
+        }
+
+        function renderAxis(byId, teamMap) {
+            const final = byId['104'];
+            const third = byId['103'];
+            return `<div class="bracket-axis">
+                <div class="bracket-trophy" aria-hidden="true">🏆</div>
+                <div class="bracket-axis-block">
+                    <div class="bracket-axis-label">Final</div>
+                    ${final ? `<div class="bracket-match">${renderBracketMatchCard(final, teamMap)}</div>` : ''}
+                </div>
+                <div class="bracket-axis-block">
+                    <div class="bracket-axis-label">3rd place</div>
+                    ${third ? `<div class="bracket-match">${renderBracketMatchCard(third, teamMap)}</div>` : ''}
+                </div>
+            </div>`;
+        }
+
+        function renderBracketSlot(slot, byId, teamMap) {
+            const game = byId[slot.id];
+            if (!game) return '';
+            return `<div class="bracket-slot" style="grid-column:${slot.col};grid-row:${slot.row}">
+                <div class="bracket-match">${renderBracketMatchCard(game, teamMap)}</div>
+            </div>`;
+        }
+
+        function renderBracketLine(line) {
+            const cls = line.side ? ` bracket-line--${line.side}` : '';
+            return `<div class="bracket-line${cls}" aria-hidden="true" style="grid-column:${line.col};grid-row:${line.row} / span ${line.span}"></div>`;
+        }
+
+        function renderBracket(games, teamMap) {
+            const byId = Object.fromEntries(games.map(g => [g.id, g]));
+            const tree = document.getElementById('bracket-tree');
+            const stacked = document.getElementById('bracket-stacked');
+
+            tree.innerHTML =
+                BRACKET_LINES.map(renderBracketLine).join('') +
+                BRACKET_SLOTS.filter(slot => !slot.axis).map(slot => renderBracketSlot(slot, byId, teamMap)).join('') +
+                renderAxis(byId, teamMap);
+
+            stacked.innerHTML = STACKED_ROUNDS.map(round => {
+                const cards = round.ids
+                    .map(id => byId[id])
+                    .filter(Boolean)
+                    .map(game => `<div class="bracket-match">${renderBracketMatchCard(game, teamMap)}</div>`)
+                    .join('');
+                return `<section class="bracket-round-section"><h3>${round.title}</h3><div class="bracket-stacked-grid">${cards}</div></section>`;
+            }).join('');
+        }
+
         async function loadGroups() {
             showLoader('groups');
             try {
@@ -354,6 +816,8 @@
                 const teamMap = Object.fromEntries(teams.map(t => [t.id, { name_en: t.name_en, flag: t.flag }]));
 
                 cachedTeams = teams;
+                cachedTeamMap = teamMap;
+                groupsLoaded = true;
                 render(groups, teamMap);
                 if (cachedMatches) renderUpcoming(cachedMatches, cachedTeams);
             } catch (e) {
@@ -367,15 +831,39 @@
                 const data = await fetchJson(SCHEDULE, 'schedule');
                 const { matches } = data;
                 cachedMatches = matches;
-                renderUpcoming(matches, cachedTeams || []);
+                if (groupsLoaded) renderUpcoming(matches, cachedTeams || []);
             } catch (e) {
                 document.getElementById('upcoming').innerHTML = '<p class="error">Could not load schedule. Check your connection and refresh.</p>';
             }
         }
 
+        async function loadKnockout() {
+            showLoader('bracket-tree');
+            showLoader('bracket-stacked');
+            try {
+                const [gamesData, teamsData] = await Promise.all([
+                    fetchJson(API + '/get/games', 'games'),
+                    fetchJson(API + '/get/teams', 'teams')
+                ]);
+
+                const knockoutGames = gamesData.games.filter(g => g.type !== 'group');
+                const { teams } = teamsData;
+                const teamMap = Object.fromEntries(teams.map(t => [t.id, { name_en: t.name_en, flag: t.flag }]));
+
+                cachedKnockoutGames = knockoutGames;
+                cachedTeamMap = teamMap;
+                cachedTeams = teams;
+                knockoutLoaded = true;
+                renderBracket(knockoutGames, teamMap);
+            } catch (e) {
+                const msg = '<p class="error">Could not load bracket. Check your connection and refresh.</p>';
+                document.getElementById('bracket-tree').innerHTML = msg;
+                document.getElementById('bracket-stacked').innerHTML = msg;
+            }
+        }
+
         initTimezoneSelect();
-        loadGroups();
-        loadSchedule();
+        initViewTabs();
     </script>
 </body>
 </html>
