@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2026 FIFA World Cup</title>
     <style>
+        :root { --bracket-width: 1383px; }
         body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; margin: 0; }
         .site-header {
             display: flex;
@@ -13,7 +14,7 @@
             gap: 16px;
             flex-wrap: wrap;
             margin-bottom: 24px;
-            max-width: 1400px;
+            width: min(100%, var(--bracket-width));
             margin-left: auto;
             margin-right: auto;
         }
@@ -28,6 +29,7 @@
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
+            justify-content: flex-end;
         }
         .view-tabs {
             display: flex;
@@ -182,9 +184,9 @@
                 var(--card-w) var(--line-w) var(--card-w) var(--line-w)
                 var(--card-w);
             grid-template-rows: repeat(16, var(--row-h));
-            width: max-content;
-            min-width: 100%;
-            margin: 0;
+            width: var(--bracket-width);
+            min-width: var(--bracket-width);
+            margin: 0 auto;
             padding: 16px 12px 24px;
             box-sizing: border-box;
         }
@@ -320,6 +322,7 @@
             .bracket-tree { display: none; }
             .bracket-stacked { display: block; }
             .site-header h1 { font-size: 1.15em; }
+            .header-right { justify-content: flex-start; }
         }
     </style>
 </head>
@@ -396,21 +399,21 @@
         const BRACKET_SLOTS = [
             { id: '74', col: 1, row: 1 }, { id: '77', col: 1, row: 3 },
             { id: '73', col: 1, row: 5 }, { id: '75', col: 1, row: 7 },
-            { id: '76', col: 1, row: 9 }, { id: '78', col: 1, row: 11 },
-            { id: '79', col: 1, row: 13 }, { id: '80', col: 1, row: 15 },
+            { id: '83', col: 1, row: 9 }, { id: '84', col: 1, row: 11 },
+            { id: '81', col: 1, row: 13 }, { id: '82', col: 1, row: 15 },
             { id: '89', col: 3, row: 2 }, { id: '90', col: 3, row: 6 },
-            { id: '91', col: 3, row: 10 }, { id: '92', col: 3, row: 14 },
+            { id: '93', col: 3, row: 10 }, { id: '94', col: 3, row: 14 },
             { id: '97', col: 5, row: 4 }, { id: '98', col: 5, row: 12 },
             { id: '101', col: 7, row: 8 },
             { id: '104', axis: 'final' }, { id: '103', axis: 'third' },
             { id: '102', col: 11, row: 8 },
             { id: '99', col: 13, row: 4 }, { id: '100', col: 13, row: 12 },
-            { id: '93', col: 15, row: 2 }, { id: '94', col: 15, row: 6 },
+            { id: '91', col: 15, row: 2 }, { id: '92', col: 15, row: 6 },
             { id: '95', col: 15, row: 10 }, { id: '96', col: 15, row: 14 },
-            { id: '83', col: 17, row: 1 }, { id: '84', col: 17, row: 3 },
-            { id: '85', col: 17, row: 5 }, { id: '86', col: 17, row: 7 },
-            { id: '87', col: 17, row: 9 }, { id: '88', col: 17, row: 11 },
-            { id: '81', col: 17, row: 13 }, { id: '82', col: 17, row: 15 }
+            { id: '76', col: 17, row: 1 }, { id: '78', col: 17, row: 3 },
+            { id: '79', col: 17, row: 5 }, { id: '80', col: 17, row: 7 },
+            { id: '86', col: 17, row: 9 }, { id: '88', col: 17, row: 11 },
+            { id: '85', col: 17, row: 13 }, { id: '87', col: 17, row: 15 }
         ];
 
         const BRACKET_LINES = [
